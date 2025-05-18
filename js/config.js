@@ -1,1 +1,1 @@
-export const WS_BASE = "wss://binding-bacterial-impressive-carolina.trycloudflare.com/ws";
+export const API = "https://binding-bacterial-impressive-carolina.trycloudflare.com";
