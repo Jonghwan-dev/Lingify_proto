@@ -1,0 +1,1 @@
+export const WS_BASE = "wss://frequencies-edge-singapore-said.trycloudflare.com/ws";

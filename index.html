@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Bilingual Subtitle Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .subtitle-container {
+            height: 120px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        .active-subtitle {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-left: 4px solid rgb(59, 130, 246);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #db2777 100%);
+        }
+        .glow {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.7);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen text-gray-100">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="gradient-bg rounded-xl p-6 mb-8 glow">
+            <h1 class="text-3xl font-bold text-center">YouTube Bilingual Subtitle Generator</h1>
+            <p class="text-center mt-2 text-blue-100">English → Korean AI-powered subtitles</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="space-y-8">
+            <!-- Input Section -->
+            <section class="bg-gray-800 rounded-xl p-6 shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">Enter YouTube Video URL</h2>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input 
+                        type="text" 
+                        id="youtubeUrl" 
+                        placeholder="https://www.youtube.com/watch?v=..." 
+                        class="flex-grow px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                    <button 
+                        id="processBtn" 
+                        class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors flex items-center justify-center"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                        </svg>
+                        Process Video
+                    </button>
+                </div>
+                <p class="text-sm text-gray-400 mt-2">Note: Processing may take a few minutes depending on video length</p>
+            </section>
+
+            <!-- Video & Status Section -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Video Player -->
+                <div class="lg:col-span-2 bg-gray-800 rounded-xl p-4 shadow-lg">
+                    <div id="videoContainer" class="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden">
+                        <div id="player" class="w-full h-full flex items-center justify-center text-gray-500">
+                            <p>Video will appear here after processing</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Processing Status -->
+                    <div id="statusContainer" class="mt-4 hidden">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex-1 bg-gray-700 rounded-full h-4">
+                                <div id="progressBar" class="bg-blue-600 h-4 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span id="progressText" class="text-sm font-medium">0%</span>
+                        </div>
+                        <div id="statusMessages" class="mt-2 space-y-2">
+                            <!-- Status messages will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Info -->
+                <div class="bg-gray-800 rounded-xl p-4 shadow-lg">
+                    <h3 class="text-lg font-semibold mb-3">AI Models Used</h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-700 p-3 rounded-lg">
+                            <h4 class="font-medium text-blue-400 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                </svg>
+                                Speech Recognition
+                            </h4>
+                            <p class="text-sm mt-1">nvidia/parakeet-tdt-0.6b-v2</p>
+                            <p class="text-xs text-gray-400 mt-1">State-of-the-art English speech-to-text model</p>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded-lg">
+                            <h4 class="font-medium text-purple-400 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-1.724 4.78c.29.354.596.696.914 1.026a1 1 0 11-1.44 1.389c-.188-.196-.373-.396-.554-.6a19.098 19.098 0 01-3.107 3.567 1 1 0 01-1.334-1.49 17.087 17.087 0 003.13-3.733 18.992 18.992 0 01-1.487-2.494 1 1 0 111.79-.89c.234.47.489.928.764 1.372.417-.934.752-1.913.997-2.927H3a1 1 0 110-2h3V3a1 1 0 011-1zm6 6a1 1 0 01.894.553l2.991 5.982a.869.869 0 01.02.037l.99 1.98a1 1 0 11-1.79.895L15.383 16h-4.764l-.724 1.447a1 1 0 11-1.788-.894l.99-1.98.019-.038 2.99-5.982A1 1 0 0113 8zm-1.382 6h2.764L13 11.236 11.618 14z" clip-rule="evenodd" />
+                                </svg>
+                                Translation
+                            </h4>
+                            <p class="text-sm mt-1">papago-ai/translation-enko</p>
+                            <p class="text-xs text-gray-400 mt-1">High-quality English to Korean translation</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Subtitles Section -->
+            <section id="subtitlesSection" class="hidden bg-gray-800 rounded-xl p-6 shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">Bilingual Subtitles</h2>
+                <div class="flex space-x-4 mb-4">
+                    <button id="syncBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                        </svg>
+                        Sync with Video
+                    </button>
+                    <button id="exportBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Export Subtitles
+                    </button>
+                </div>
+                <div class="subtitle-container bg-gray-700 p-4 rounded-lg">
+                    <div id="subtitles" class="space-y-4">
+                        <!-- Subtitles will be added here -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>AI-powered bilingual subtitle generator using Hugging Face models</p>
+            <p class="mt-1">Note: This is a frontend demo. Backend implementation would be required for full functionality.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const youtubeUrlInput = document.getElementById('youtubeUrl');
+            const processBtn = document.getElementById('processBtn');
+            const videoContainer = document.getElementById('videoContainer');
+            const player = document.getElementById('player');
+            const statusContainer = document.getElementById('statusContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const statusMessages = document.getElementById('statusMessages');
+            const subtitlesSection = document.getElementById('subtitlesSection');
+            const subtitles = document.getElementById('subtitles');
+            const syncBtn = document.getElementById('syncBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            
+            // Sample data for demonstration
+            const sampleSubtitles = [
+                { start: 0, end: 5, en: "Hello everyone, welcome to this video.", ko: "안녕하세요 여러분, 이 비디오에 오신 것을 환영합니다." },
+                { start: 5, end: 10, en: "Today we'll be discussing AI technology.", ko: "오늘 우리는 AI 기술에 대해 논의할 것입니다." },
+                { start: 10, end: 15, en: "Specifically, speech recognition and translation.", ko: "구체적으로는 음성 인식과 번역에 대해 이야기하겠습니다." },
+                { start: 15, end: 20, en: "These technologies are revolutionizing communication.", ko: "이 기술들은 커뮤니케이션을 혁신하고 있습니다." },
+                { start: 20, end: 25, en: "Let's dive deeper into how they work.", ko: "그들이 어떻게 작동하는지 더 깊이 알아보겠습니다." }
+            ];
+            
+            // For demo purposes - in a real app this would be API calls to backend
+            processBtn.addEventListener('click', function() {
+                const youtubeUrl = youtubeUrlInput.value.trim();
+                
+                if (!youtubeUrl) {
+                    alert('Please enter a YouTube URL');
+                    return;
+                }
+                
+                // Extract video ID (simplified for demo)
+                let videoId = '';
+                try {
+                    const url = new URL(youtubeUrl);
+                    videoId = url.searchParams.get('v');
+                    if (!videoId) {
+                        // Handle youtu.be links
+                        if (url.hostname === 'youtu.be') {
+                            videoId = url.pathname.slice(1);
+                        }
+                    }
+                } catch (e) {
+                    alert('Invalid YouTube URL');
+                    return;
+                }
+                
+                if (!videoId) {
+                    alert('Could not extract video ID from URL');
+                    return;
+                }
+                
+                // Start processing
+                processBtn.disabled = true;
+                processBtn.innerHTML = 
+                    <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                ;
+                
+                // Show status container
+                statusContainer.classList.remove('hidden');
+                
+                // Clear previous messages
+                statusMessages.innerHTML = '';
+                
+                // Add player iframe (simplified for demo)
+                player.innerHTML = 
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        src="https://www.youtube.com/embed/${videoId}?enablejsapi=1" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                ;
+                
+                // Simulate processing steps
+                simulateProcessing();
+            });
+            
+            function simulateProcessing() {
+                // Step 1: Fetching video
+                addStatusMessage('Fetching YouTube video...', 'blue-500');
+                updateProgress(10);
+                
+                setTimeout(() => {
+                    // Step 2: Extracting audio
+                    addStatusMessage('Extracting audio track...', 'blue-500');
+                    updateProgress(20);
+                    
+                    setTimeout(() => {
+                        // Step 3: Speech recognition
+                        addStatusMessage('Running speech recognition (nvidia/parakeet-tdt-0.6b-v2)...', 'purple-500');
+                        updateProgress(40);
+                        
+                        setTimeout(() => {
+                            // Step 4: Translation
+                            addStatusMessage('Translating to Korean (papago-ai/translation-enko)...', 'purple-500');
+                            updateProgress(70);
+                            
+                            setTimeout(() => {
+                                // Step 5: Time alignment
+                                addStatusMessage('Aligning subtitles with timeline...', 'blue-500');
+                                updateProgress(90);
+                                
+                                setTimeout(() => {
+                                    // Complete
+                                    addStatusMessage('Processing complete!', 'green-500');
+                                    updateProgress(100);
+                                    
+                                    processBtn.disabled = false;
+                                    processBtn.innerHTML = 
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                                        </svg>
+                                        Process Video
+                                    ;
+                                    
+                                    // Show subtitles
+                                    displaySubtitles();
+                                }, 1500);
+                            }, 2000);
+                        }, 2000);
+                    }, 1500);
+                }, 1000);
+            }
+            
+            function addStatusMessage(text, color) {
+                const message = document.createElement('div');
+                message.className = flex items-center text-sm text-${color};
+                message.innerHTML = 
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                    ${text}
+                ;
+                statusMessages.appendChild(message);
+                statusMessages.scrollTop = statusMessages.scrollHeight;
+            }
+            
+            function updateProgress(percent) {
+                progressBar.style.width = ${percent}%;
+                progressText.textContent = ${percent}%;
+            }
+            
+            function displaySubtitles() {
+                subtitlesSection.classList.remove('hidden');
+                subtitles.innerHTML = '';
+                
+                sampleSubtitles.forEach((sub, index) => {
+                    const subElement = document.createElement('div');
+                    subElement.className = 'subtitle p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors';
+                    subElement.dataset.start = sub.start;
+                    subElement.dataset.end = sub.end;
+                    subElement.innerHTML = 
+                        <div class="flex items-start">
+                            <span class="text-xs text-gray-400 w-16 flex-shrink-0">${formatTime(sub.start)} - ${formatTime(sub.end)}</span>
+                            <div class="flex-1">
+                                <p class="text-blue-300">${sub.en}</p>
+                                <p class="text-purple-300 mt-1">${sub.ko}</p>
+                            </div>
+                        </div>
+                    ;
+                    
+                    // Click handler to seek video
+                    subElement.addEventListener('click', function() {
+                        // In a real app, this would control the YouTube player
+                        highlightSubtitle(index);
+                        console.log(Seeking to ${sub.start} seconds);
+                    });
+                    
+                    subtitles.appendChild(subElement);
+                });
+            }
+            
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return ${mins}:${secs < 10 ? '0' : ''}${secs};
+            }
+            
+            function highlightSubtitle(index) {
+                // Remove active class from all subtitles
+                document.querySelectorAll('.subtitle').forEach(sub => {
+                    sub.classList.remove('active-subtitle');
+                });
+                
+                // Add active class to selected subtitle
+                const subs = document.querySelectorAll('.subtitle');
+                if (index >= 0 && index < subs.length) {
+                    subs[index].classList.add('active-subtitle');
+                    
+                    // Scroll to subtitle
+                    subs[index].scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }
+            }
+            
+            // Sync button - would control YouTube player in real app
+            syncBtn.addEventListener('click', function() {
+                alert('In a real implementation, this would sync subtitles with video playback');
+            });
+            
+            // Export button
+            exportBtn.addEventListener('click', function() {
+                // Create SRT file content
+                let srtContent = '';
+                sampleSubtitles.forEach((sub, index) => {
+                    srtContent += ${index + 1}\n;
+                    srtContent += ${formatTime(sub.start)} --> ${formatTime(sub.end)}\n;
+                    srtContent += ${sub.en}\n${sub.ko}\n\n;
+                });
+                
+                // Create download link
+                const blob = new Blob([srtContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'subtitles.srt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        });
+    </script>
+</body>
+</html>
