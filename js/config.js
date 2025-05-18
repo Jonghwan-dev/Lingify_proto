@@ -1,1 +1,1 @@
-export const WS_BASE = "wss://enb-serum-york-presents.trycloudflare.coma/ws";
+export const WS_BASE = "wss://enb-serum-york-presents.trycloudflare.com/ws";
